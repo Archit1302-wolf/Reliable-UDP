@@ -13,5 +13,6 @@ rto.py (the two classes).
 ## Aqifa
 
 ## Archit
+- Used AI for building test_all.py unit tests for FixedRTO and channel damage logic.
 
 ## Harsha
