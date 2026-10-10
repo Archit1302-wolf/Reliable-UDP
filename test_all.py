@@ -9,6 +9,9 @@ code; that is expected. Tests use small files and a 2 ms delay so they run fast.
 
 import sys
 import time
+import channel
+import rto
+from channel import Channel, damage
 from rto import FixedRTO
 
 
@@ -24,10 +27,28 @@ def test_rto_fixed():
     assert abs(rto.value() - 0.2) < 1e-6
 
 
+def test_channel_damage():
+    ch = Channel(loss=1.0, seed=42)
+    assert ch.damage(b"hello") == []
+
+    ch_clean = Channel(loss=0.0, corrupt=0.0, dup=0.0, delay=0.0, seed=42)
+    assert ch_clean.damage(b"hello") == [b"hello"]
+
+    ch_dup = Channel(dup=1.0, seed=42)
+    assert ch_dup.damage(b"hello") == [b"hello", b"hello"]
+
+    ch_corrupt = Channel(corrupt=1.0, seed=42)
+    damaged = ch_corrupt.damage(b"hello")
+    assert len(damaged) == 1
+    assert damaged[0] != b"hello"
+    assert len(damaged[0]) == len(b"hello")
+
+
 def run_tests():
     filter_name = sys.argv[1].lower() if len(sys.argv) > 1 else ""
     tests = [
         ("test_rto_fixed", test_rto_fixed),
+        ("test_channel_damage", test_channel_damage),
     ]
 
     passed = 0
