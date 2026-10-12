@@ -29,6 +29,15 @@ class FixedRTO:
 
 
 class AdaptiveRTO:
+    """RFC 6298 Jacobson/Karels Adaptive Retransmission Timeout Estimator.
+
+    Maintains smoothed round-trip time (SRTT) and RTT variation (RTTVAR):
+        SRTT   <- (1 - alpha) * SRTT + alpha * RTT       (alpha = 1/8)
+        RTTVAR <- (1 - beta) * RTTVAR + beta * |SRTT - RTT| (beta = 1/4)
+        RTO    <- SRTT + 4 * RTTVAR
+    Clamped within [min_rto, max_rto]. Supports Karn's algorithm toggle.
+    """
+
     def __init__(self, initial=0.2, min_rto=0.05, max_rto=60.0, karn=True):
         self.initial = initial
         self.min_rto = min_rto
@@ -40,6 +49,7 @@ class AdaptiveRTO:
         self.trace = []
 
     def value(self):
+        """Current timeout value in seconds."""
         return self.rto
 
     def sample(self, rtt, resent):
