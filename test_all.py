@@ -37,13 +37,22 @@ def test_rto_adaptive():
     assert abs(rto.value() - 0.3) < 1e-6
 
     rto.sample(0.2, True)
-    assert rto.srtt == 0.1125 or rto.srtt == 0.1
+    assert rto.srtt == 0.1
 
     rto.backoff()
     assert abs(rto.value() - 0.6) < 1e-6
 
     rto.forward()
-    assert abs(rto.value() - 0.3) < 1e-6 or abs(rto.value() - 0.35) < 0.1
+    assert abs(rto.value() - 0.3) < 1e-6
+
+
+def test_rto_karn_toggle():
+    rto = AdaptiveRTO(initial=0.2, karn=False)
+    rto.sample(0.1, False)
+    assert rto.srtt == 0.1
+    rto.sample(0.2, True)
+    assert rto.srtt != 0.1
+    assert len(rto.trace) == 2
 
 
 def test_channel_damage():
@@ -68,6 +77,7 @@ def run_tests():
     tests = [
         ("test_rto_fixed", test_rto_fixed),
         ("test_rto_adaptive", test_rto_adaptive),
+        ("test_rto_karn_toggle", test_rto_karn_toggle),
         ("test_channel_damage", test_channel_damage),
     ]
 
