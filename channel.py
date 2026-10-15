@@ -8,7 +8,9 @@ Each direction has its own random generator built from the seed, so the
 same seed makes the same decisions for the same packets.
 """
 
+import hashlib
 import random
+import struct
 import time
 
 
@@ -23,21 +25,36 @@ class Channel:
         self.seed = seed
         self.rng = random.Random(seed)
         self.held = None
+        self.attempts = {}
+
+    def _decide(self, salt, seq, attempt, p):
+        if self.seed is None:
+            return self.rng.random() < p
+        key = f"{self.seed}|{salt}|{seq}|{attempt}".encode()
+        h = hashlib.blake2b(key, digest_size=8).digest()
+        val = int.from_bytes(h, "big") / (2**64)
+        return val < p
 
     def damage(self, data):
         if not data:
             return []
 
-        if self.loss > 0 and self.rng.random() < self.loss:
+        seq = 0
+        if len(data) >= 4:
+            seq = struct.unpack("!I", data[:4])[0]
+        attempt = self.attempts.get(seq, 0) + 1
+        self.attempts[seq] = attempt
+
+        if self.loss > 0 and self._decide("loss", seq, attempt, self.loss):
             return []
 
         pkt = bytearray(data)
-        if self.corrupt > 0 and len(pkt) > 0 and self.rng.random() < self.corrupt:
+        if self.corrupt > 0 and len(pkt) > 0 and self._decide("corrupt", seq, attempt, self.corrupt):
             idx = self.rng.randint(0, len(pkt) - 1)
             pkt[idx] ^= 0xFF
 
         res = [bytes(pkt)]
-        if self.dup > 0 and self.rng.random() < self.dup:
+        if self.dup > 0 and self._decide("dup", seq, attempt, self.dup):
             res.append(bytes(pkt))
 
         if self.delay > 0:
@@ -47,7 +64,7 @@ class Channel:
             if d > 0:
                 time.sleep(d)
 
-        if self.reorder > 0 and self.rng.random() < self.reorder:
+        if self.reorder > 0 and self._decide("reorder", seq, attempt, self.reorder):
             if self.held is None:
                 self.held = res
                 return []
