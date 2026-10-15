@@ -472,6 +472,26 @@ def test_channel_rate_limit():
     assert elapsed >= 0.005
 
 
+def test_channel_rate_limit_burst_capacity():
+    # When tokens are full, initial packet passes without throttling
+    ch = Channel(rate=50000, seed=42)
+    start = time.monotonic()
+    ch.damage(b"b" * 1024)
+    elapsed = time.monotonic() - start
+    assert elapsed < 0.01
+
+
+def test_channel_rate_limit_replenishment():
+    # Tokens replenish over elapsed time up to bucket_size
+    ch = Channel(rate=20000, seed=42)
+    ch.tokens = 0
+    ch.last_time = time.monotonic() - 0.1
+    now = time.monotonic()
+    elapsed = now - ch.last_time
+    ch.tokens = min(ch.bucket_size, ch.tokens + elapsed * ch.rate)
+    assert ch.tokens >= 1500
+
+
 def main():
     words = [w for w in sys.argv[1:] if w != "-v"]
 
