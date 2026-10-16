@@ -492,6 +492,88 @@ def test_channel_rate_limit_replenishment():
     assert ch.tokens >= 1500
 
 
+def test_channel_corrupt_packet_checksum_failure():
+    # Bit-corrupted packets produced by Channel.damage must fail packet.parse_packet checksum
+    orig_pkt = packet.make_data(0, b"critical data chunk", True)
+    assert packet.parse_packet(orig_pkt) is not None
+
+    ch = Channel(corrupt=1.0, seed=42)
+    damaged = ch.damage(orig_pkt)
+    assert len(damaged) == 1
+    assert packet.parse_packet(damaged[0]) is None
+
+
+def test_channel_reorder_damage_flow():
+    # Reordering holds first packet and flushes inverted when second packet arrives
+    ch = Channel(reorder=1.0, seed=42)
+    p1 = packet.make_data(0, b"packet_zero", False)
+    p2 = packet.make_data(1, b"packet_one", True)
+
+    assert ch.damage(p1) == []
+    flushed = ch.damage(p2)
+    assert len(flushed) == 2
+    assert flushed[0] == p2
+    assert flushed[1] == p1
+
+
+def test_channel_end_to_end_adaptive_rto_transfer():
+    # Full end-to-end integration: file transfer through Channel with loss and AdaptiveRTO
+    orig_linger = stopwait.LINGER
+    stopwait.LINGER = 0.05
+    try:
+        recv_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        recv_sock.bind(("127.0.0.1", 0))
+        r_addr = recv_sock.getsockname()
+
+        send_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        send_sock.bind(("127.0.0.1", 0))
+
+        test_data = b"Reliable-UDP Channel & AdaptiveRTO end-to-end integration payload" * 15
+        received = []
+        rt = threading.Thread(target=lambda: received.append(stopwait.recv_file(recv_sock, 1)))
+        rt.start()
+
+        ch = Channel(loss=0.1, corrupt=0.0, dup=0.0, delay=0.002, seed=123)
+        proxy_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        proxy_sock.bind(("127.0.0.1", 0))
+        p_addr = proxy_sock.getsockname()
+
+        def proxy():
+            client_addr = None
+            proxy_sock.settimeout(0.6)
+            while True:
+                try:
+                    raw, addr = proxy_sock.recvfrom(65535)
+                except (socket.timeout, TimeoutError):
+                    break
+                if addr == r_addr:
+                    if client_addr:
+                        for pkt in ch.damage(raw):
+                            proxy_sock.sendto(pkt, client_addr)
+                else:
+                    client_addr = addr
+                    for pkt in ch.damage(raw):
+                        proxy_sock.sendto(pkt, r_addr)
+
+        pt = threading.Thread(target=proxy)
+        pt.start()
+
+        adaptive_rto = AdaptiveRTO(initial=0.08, min_rto=0.02, max_rto=5.0)
+        stats = stopwait.send_file(send_sock, p_addr, test_data, 1, adaptive_rto)
+
+        pt.join(timeout=1.5)
+        rt.join(timeout=1.5)
+        proxy_sock.close()
+        recv_sock.close()
+        send_sock.close()
+
+        assert received and hashlib.sha256(received[0]).digest() == hashlib.sha256(test_data).digest()
+        assert stats["sent"] >= stats["packets"]
+        assert len(adaptive_rto.trace) > 0
+    finally:
+        stopwait.LINGER = orig_linger
+
+
 def main():
     words = [w for w in sys.argv[1:] if w != "-v"]
 
