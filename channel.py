@@ -15,16 +15,20 @@ import time
 
 
 class Channel:
-    def __init__(self, loss=0.0, corrupt=0.0, dup=0.0, delay=0.0, jitter=0.0, reorder=0.0, seed=None):
+    def __init__(self, loss=0.0, corrupt=0.0, dup=0.0, delay=0.0, jitter=0.0, reorder=0.0, rate=0.0, seed=None):
         self.loss = loss
         self.corrupt = corrupt
         self.dup = dup
         self.delay = delay
         self.jitter = jitter
         self.reorder = reorder
+        self.rate = rate
         self.seed = seed
         self.rng = random.Random(seed)
         self.held = None
+        self.tokens = 64 * 1024
+        self.bucket_size = 64 * 1024
+        self.last_time = time.monotonic()
         self.attempts = {}
 
     def _decide(self, salt, seq, attempt, p):
@@ -57,6 +61,21 @@ class Channel:
         if self.dup > 0 and self._decide("dup", seq, attempt, self.dup):
             res.append(bytes(pkt))
 
+        if self.rate > 0:
+            now = time.monotonic()
+            elapsed = now - self.last_time
+            self.tokens = min(self.bucket_size, self.tokens + elapsed * self.rate)
+            self.last_time = now
+
+            cost = len(data)
+            if self.tokens < cost:
+                wait_time = (cost - self.tokens) / self.rate
+                time.sleep(wait_time)
+                self.tokens = 0
+                self.last_time = time.monotonic()
+            else:
+                self.tokens -= cost
+
         if self.delay > 0:
             d = self.delay
             if self.jitter > 0:
@@ -80,6 +99,6 @@ class Channel:
         return res
 
 
-def damage(data, loss=0.0, corrupt=0.0, dup=0.0, delay=0.0, jitter=0.0, reorder=0.0, seed=None):
-    c = Channel(loss=loss, corrupt=corrupt, dup=dup, delay=delay, jitter=jitter, reorder=reorder, seed=seed)
+def damage(data, loss=0.0, corrupt=0.0, dup=0.0, delay=0.0, jitter=0.0, reorder=0.0, rate=0.0, seed=None):
+    c = Channel(loss=loss, corrupt=corrupt, dup=dup, delay=delay, jitter=jitter, reorder=reorder, rate=rate, seed=seed)
     return c.damage(data)

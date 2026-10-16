@@ -80,6 +80,15 @@ def test_channel_determinism():
     assert p1 == p2
 
 
+def test_channel_rate_limit():
+    ch = Channel(rate=10000, seed=42)
+    ch.tokens = 0
+    start = time.monotonic()
+    ch.damage(b"a" * 100)
+    elapsed = time.monotonic() - start
+    assert elapsed >= 0.005
+
+
 def run_tests():
     filter_name = sys.argv[1].lower() if len(sys.argv) > 1 else ""
     tests = [
@@ -88,6 +97,7 @@ def run_tests():
         ("test_rto_karn_toggle", test_rto_karn_toggle),
         ("test_channel_damage", test_channel_damage),
         ("test_channel_determinism", test_channel_determinism),
+        ("test_channel_rate_limit", test_channel_rate_limit),
     ]
 
     passed = 0
