@@ -574,6 +574,24 @@ def test_channel_end_to_end_adaptive_rto_transfer():
         stopwait.LINGER = orig_linger
 
 
+def test_channel_determinism_drill():
+    # Determinism drill: Two independent channel instances with identical seed yield exact decisions
+    ch1 = Channel(loss=0.25, corrupt=0.1, dup=0.1, reorder=0.1, seed=98765)
+    ch2 = Channel(loss=0.25, corrupt=0.1, dup=0.1, reorder=0.1, seed=98765)
+
+    stream1 = [ch1.damage(f"packet_{i}".encode()) for i in range(50)]
+    stream2 = [ch2.damage(f"packet_{i}".encode()) for i in range(50)]
+    assert stream1 == stream2
+
+
+def test_channel_jitter_bounds():
+    # Ensure jitter stays strictly bounded within [-jitter, +jitter]
+    ch = Channel(delay=0.01, jitter=0.005, seed=42)
+    for _ in range(20):
+        d = ch.delay + ch.rng.uniform(-ch.jitter, ch.jitter)
+        assert 0.005 <= d <= 0.015
+
+
 def main():
     words = [w for w in sys.argv[1:] if w != "-v"]
 

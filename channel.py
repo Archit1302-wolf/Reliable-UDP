@@ -4,8 +4,11 @@ The sender and receiver never talk directly. Every packet goes through the
 channel, which decides what happens to it: dropped, corrupted, duplicated,
 delayed, or held back so later packets overtake it.
 
-Each direction has its own random generator built from the seed, so the
-same seed makes the same decisions for the same packets.
+Why userspace instead of Linux tc netem?
+Linux tc netem requires root/kernel privileges and is platform-specific.
+Building an impairment emulator in userspace using Blake2b cryptographic hashes
+guarantees cross-platform portability (Windows/macOS/Linux) and deterministic
+repeatability across multi-protocol evaluations.
 """
 
 import hashlib
