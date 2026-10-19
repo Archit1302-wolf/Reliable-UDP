@@ -592,6 +592,35 @@ def test_channel_jitter_bounds():
         assert 0.005 <= d <= 0.015
 
 
+def test_rto_sub_millisecond_resolution():
+    # Verify AdaptiveRTO handles sub-millisecond samples smoothly without underflow
+    rto = AdaptiveRTO(initial=0.01, min_rto=0.001, max_rto=1.0)
+    for _ in range(10):
+        rto.sample(0.0004, False)
+    assert rto.value() >= 0.001
+    assert rto.srtt is not None and rto.srtt > 0
+
+
+def test_channel_variable_payload_corruption():
+    # Corruption preserves exact byte length across various packet sizes
+    ch = Channel(corrupt=1.0, seed=42)
+    for size in [1, 13, 100, 512, 1024]:
+        raw = b"x" * size
+        corrupted = ch.damage(raw)
+        assert len(corrupted) == 1
+        assert len(corrupted[0]) == size
+        assert corrupted[0] != raw
+
+
+def test_rto_min_max_boundary_invariance():
+    # Extreme samples must never violate [min_rto, max_rto] invariant
+    rto = AdaptiveRTO(initial=0.2, min_rto=0.05, max_rto=1.5)
+    rto.sample(1e-9, False)
+    assert rto.value() >= 0.05
+    rto.sample(100.0, False)
+    assert rto.value() <= 1.5
+
+
 def main():
     words = [w for w in sys.argv[1:] if w != "-v"]
 
