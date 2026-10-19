@@ -21,5 +21,6 @@ rto.py (the two classes).
 - Used AI to formulate token bucket burst capacity and throttling edge tests (Oct 15 milestone).
 - Used AI to build end-to-end channel integration tests with composite impairments and reordering recovery (Oct 16 milestone).
 - Used AI to build determinism drill verification tests and userspace netem emulation documentation (Oct 17 milestone).
+- Used AI to formulate boundary invariance tests and variable-payload corruption checks (Oct 19 milestone).
 
 ## Harsha
