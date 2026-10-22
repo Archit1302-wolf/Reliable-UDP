@@ -8,6 +8,7 @@ code; that is expected. Tests use small files and a 2 ms delay so they run fast.
 """
 
 import sys
+import time
 from rto import FixedRTO, AdaptiveRTO
 from channel import Channel, damage
 
@@ -59,12 +60,41 @@ def test_channel_damage():
     assert len(damaged[0]) == len(b"hello")
 
 
+def test_channel_determinism():
+    ch1 = Channel(loss=0.5, corrupt=0.2, seed=12345)
+    ch2 = Channel(loss=0.5, corrupt=0.2, seed=12345)
+    p1 = [ch1.damage(b"\x00\x00\x00\x01data") for _ in range(10)]
+    p2 = [ch2.damage(b"\x00\x00\x00\x01data") for _ in range(10)]
+    assert p1 == p2
+
+
+def test_channel_rate_limit():
+    ch = Channel(rate=10000, seed=42)
+    ch.tokens = 0
+    start = time.monotonic()
+    ch.damage(b"a" * 100)
+    elapsed = time.monotonic() - start
+    assert elapsed >= 0.005
+
+
+def test_rto_karn_toggle():
+    rto = AdaptiveRTO(initial=0.2, karn=False)
+    rto.sample(0.1, False)
+    assert rto.srtt == 0.1
+    rto.sample(0.2, True)
+    assert rto.srtt != 0.1
+    assert len(rto.trace) == 2
+
+
 def run_tests():
     filter_name = sys.argv[1].lower() if len(sys.argv) > 1 else ""
     tests = [
         ("test_rto_fixed", test_rto_fixed),
         ("test_rto_adaptive", test_rto_adaptive),
+        ("test_rto_karn_toggle", test_rto_karn_toggle),
         ("test_channel_damage", test_channel_damage),
+        ("test_channel_determinism", test_channel_determinism),
+        ("test_channel_rate_limit", test_channel_rate_limit),
     ]
 
     passed = 0
@@ -85,5 +115,6 @@ def run_tests():
 
 if __name__ == "__main__":
     run_tests()
+
 
 

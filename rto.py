@@ -37,6 +37,7 @@ class AdaptiveRTO:
         self.srtt = None
         self.rttvar = None
         self.rto = initial
+        self.trace = []
 
     def value(self):
         return self.rto
@@ -58,6 +59,14 @@ class AdaptiveRTO:
             self.rto = self.min_rto
         elif self.rto > self.max_rto:
             self.rto = self.max_rto
+
+        self.trace.append({
+            "rtt": rtt,
+            "srtt": self.srtt,
+            "rttvar": self.rttvar,
+            "rto": self.rto,
+            "resent": resent,
+        })
 
     def backoff(self):
         self.rto = min(self.max_rto, self.rto * 2)

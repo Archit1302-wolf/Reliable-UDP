@@ -8,36 +8,73 @@ Each direction has its own random generator built from the seed, so the
 same seed makes the same decisions for the same packets.
 """
 
+import hashlib
 import random
+import struct
 import time
 
 
 class Channel:
-    def __init__(self, loss=0.0, corrupt=0.0, dup=0.0, delay=0.0, jitter=0.0, reorder=0.0, seed=None):
+    def __init__(self, loss=0.0, corrupt=0.0, dup=0.0, delay=0.0, jitter=0.0, reorder=0.0, rate=0.0, seed=None):
         self.loss = loss
         self.corrupt = corrupt
         self.dup = dup
         self.delay = delay
         self.jitter = jitter
         self.reorder = reorder
+        self.rate = rate
+        self.seed = seed
         self.rng = random.Random(seed)
         self.held = None
+        self.tokens = 64 * 1024
+        self.bucket_size = 64 * 1024
+        self.last_time = time.monotonic()
+        self.attempts = {}
+
+    def _decide(self, salt, seq, attempt, p):
+        if self.seed is None:
+            return self.rng.random() < p
+        key = f"{self.seed}|{salt}|{seq}|{attempt}".encode()
+        h = hashlib.blake2b(key, digest_size=8).digest()
+        val = int.from_bytes(h, "big") / (2**64)
+        return val < p
 
     def damage(self, data):
         if not data:
             return []
 
-        if self.loss > 0 and self.rng.random() < self.loss:
+        seq = 0
+        if len(data) >= 4:
+            seq = struct.unpack("!I", data[:4])[0]
+        attempt = self.attempts.get(seq, 0) + 1
+        self.attempts[seq] = attempt
+
+        if self.loss > 0 and self._decide("loss", seq, attempt, self.loss):
             return []
 
         pkt = bytearray(data)
-        if self.corrupt > 0 and len(pkt) > 0 and self.rng.random() < self.corrupt:
+        if self.corrupt > 0 and len(pkt) > 0 and self._decide("corrupt", seq, attempt, self.corrupt):
             idx = self.rng.randint(0, len(pkt) - 1)
             pkt[idx] ^= 0xFF
 
         res = [bytes(pkt)]
-        if self.dup > 0 and self.rng.random() < self.dup:
+        if self.dup > 0 and self._decide("dup", seq, attempt, self.dup):
             res.append(bytes(pkt))
+
+        if self.rate > 0:
+            now = time.monotonic()
+            elapsed = now - self.last_time
+            self.tokens = min(self.bucket_size, self.tokens + elapsed * self.rate)
+            self.last_time = now
+
+            cost = len(data)
+            if self.tokens < cost:
+                wait_time = (cost - self.tokens) / self.rate
+                time.sleep(wait_time)
+                self.tokens = 0
+                self.last_time = time.monotonic()
+            else:
+                self.tokens -= cost
 
         if self.delay > 0:
             d = self.delay
@@ -46,7 +83,7 @@ class Channel:
             if d > 0:
                 time.sleep(d)
 
-        if self.reorder > 0 and self.rng.random() < self.reorder:
+        if self.reorder > 0 and self._decide("reorder", seq, attempt, self.reorder):
             if self.held is None:
                 self.held = res
                 return []
@@ -62,8 +99,9 @@ class Channel:
         return res
 
 
-def damage(data, loss=0.0, corrupt=0.0, dup=0.0, delay=0.0, jitter=0.0, reorder=0.0, seed=None):
-    c = Channel(loss=loss, corrupt=corrupt, dup=dup, delay=delay, jitter=jitter, reorder=reorder, seed=seed)
+def damage(data, loss=0.0, corrupt=0.0, dup=0.0, delay=0.0, jitter=0.0, reorder=0.0, rate=0.0, seed=None):
+    c = Channel(loss=loss, corrupt=corrupt, dup=dup, delay=delay, jitter=jitter, reorder=reorder, rate=rate, seed=seed)
     return c.damage(data)
+
 
 
