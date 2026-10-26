@@ -392,6 +392,33 @@ def test_rto_karn_toggle():
     assert len(rto_inst.trace) == 2
 
 
+def test_rto_karn_retransmission_ignored():
+    # When karn=True (default), samples for resent packets are discarded
+    rto = AdaptiveRTO(initial=0.2, karn=True)
+    rto.sample(0.1, False)
+    srtt_before = rto.srtt
+    rttvar_before = rto.rttvar
+    rto_val_before = rto.value()
+
+    rto.sample(0.5, True)  # resent=True should be ignored
+    assert rto.srtt == srtt_before
+    assert rto.rttvar == rttvar_before
+    assert rto.value() == rto_val_before
+    assert len(rto.trace) == 1
+
+
+def test_rto_trace_logging():
+    # Verify trace entries have complete metrics for plotting and analysis
+    rto = AdaptiveRTO(initial=0.2)
+    rto.sample(0.08, False)
+    assert len(rto.trace) == 1
+    entry = rto.trace[0]
+    for key in ["rtt", "srtt", "rttvar", "rto", "resent"]:
+        assert key in entry
+    assert entry["resent"] is False
+    assert abs(entry["rtt"] - 0.08) < 1e-6
+
+
 def test_channel_damage():
     ch = Channel(loss=1.0, seed=42)
     assert ch.damage(b"hello") == []

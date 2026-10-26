@@ -53,6 +53,11 @@ class AdaptiveRTO:
         return self.rto
 
     def sample(self, rtt, resent):
+        """Update RTO estimator with an RTT sample.
+
+        Karn's Algorithm (1987): If the packet was retransmitted and karn is True,
+        ignore the sample to resolve RTT measurement ambiguity.
+        """
         if self.karn and resent:
             return
 
@@ -79,9 +84,11 @@ class AdaptiveRTO:
         })
 
     def backoff(self):
+        """Exponential backoff upon timeout: double RTO up to max_rto."""
         self.rto = min(self.max_rto, self.rto * 2)
 
     def forward(self):
+        """Restore calculated Jacobson/Karels RTO when ACK advances window."""
         if self.srtt is not None:
             calc = self.srtt + 4 * self.rttvar
             if calc < self.min_rto:
