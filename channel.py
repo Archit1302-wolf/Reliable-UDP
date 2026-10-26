@@ -71,6 +71,7 @@ class Channel:
         if self.dup > 0 and self._decide("dup", seq, attempt, self.dup):
             res.append(bytes(pkt))
 
+        # Token-bucket rate limiter: bounds throughput to emulate link capacity (bytes/sec)
         if self.rate > 0:
             now = time.monotonic()
             elapsed = now - self.last_time
