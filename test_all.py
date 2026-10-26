@@ -444,6 +444,25 @@ def test_channel_determinism():
     assert p1 == p2
 
 
+def test_channel_determinism_seed_divergence():
+    # Different seeds must produce different impairment outcomes
+    ch1 = Channel(loss=0.5, corrupt=0.2, seed=11111)
+    ch2 = Channel(loss=0.5, corrupt=0.2, seed=99999)
+    p1 = [ch1.damage(b"\x00\x00\x00\x01data") for _ in range(20)]
+    p2 = [ch2.damage(b"\x00\x00\x00\x01data") for _ in range(20)]
+    assert p1 != p2
+
+
+def test_channel_attempt_tracking():
+    # Retransmissions of the same seq advance the attempt counter
+    ch = Channel(loss=0.0, corrupt=0.0, seed=42)
+    pkt = b"\x00\x00\x00\x07payload"
+    ch.damage(pkt)
+    assert ch.attempts.get(7) == 1
+    ch.damage(pkt)
+    assert ch.attempts.get(7) == 2
+
+
 def test_channel_rate_limit():
     ch = Channel(rate=10000, seed=42)
     ch.tokens = 0

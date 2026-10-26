@@ -32,6 +32,16 @@ class Channel:
         self.attempts = {}
 
     def _decide(self, salt, seq, attempt, p):
+        """Hash-seeded impairment decision function.
+
+        Derives impairment decisions from a cryptographic hash of packet identity:
+            key = f"{seed}|{salt}|{seq}|{attempt}"
+            hash = blake2b(key, 8 bytes)
+            probability = int(hash) / 2**64 < p
+
+        Eliminates stream-position dependency so Stop-and-Wait, Go-Back-N, and
+        Selective Repeat encounter identical loss/damage patterns under the same seed.
+        """
         if self.seed is None:
             return self.rng.random() < p
         key = f"{self.seed}|{salt}|{seq}|{attempt}".encode()

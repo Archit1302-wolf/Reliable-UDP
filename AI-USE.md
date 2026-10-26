@@ -17,5 +17,6 @@ rto.py (the two classes).
 - Used AI for building test_all.py unit tests for FixedRTO and channel damage logic.
 - Used AI to formulate RFC 6298 first-sample and variance-tracking unit tests for AdaptiveRTO (Oct 12 milestone).
 - Used AI to validate Karn's algorithm RTT ambiguity edge cases and trace schema tests (Oct 13 milestone).
+- Used AI to design determinism verification tests and hash-seeded attempt tracking tests (Oct 14 milestone).
 
 ## Harsha
