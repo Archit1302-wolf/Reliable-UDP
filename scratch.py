@@ -113,6 +113,23 @@ def goodput(size_bytes: int, seconds: float) -> float:
     return round((size_bytes * 8) / (seconds * 1_000_000), 4)
 
 
+def rto_after(samples: List[Tuple[float, bool]], karn: bool) -> float:
+    """Calculate final RTO in ms after a sequence of (rtt_ms, resent) samples.
+
+    Args:
+        samples: List of (rtt_ms, resent) pairs.
+        karn: True to enable Karn's rule (ignoring resent samples).
+
+    Returns:
+        Final RTO in milliseconds rounded to 1 decimal place.
+    """
+    from rto import AdaptiveRTO
+    rto = AdaptiveRTO(initial=1.0, min_rto=0.01, max_rto=60.0, karn=karn)
+    for rtt_ms, resent in samples:
+        rto.sample(rtt_ms / 1000.0, resent)
+    return round(rto.value() * 1000.0, 1)
+
+
 if __name__ == "__main__":
     # Tue 13 Oct verification
     b_steps = backoff_steps(120.0, 5, 1000.0)
@@ -141,4 +158,12 @@ if __name__ == "__main__":
     assert gp1 == 0.1709
     assert gp2 == 0.0963
 
-    print("\nAll scratch.py checks for Oct 13-17 PASS!")
+    # Tue 20 Oct verification: Karn's rule
+    rto_karn_on = rto_after([(40, False), (500, True)], True)
+    rto_karn_off = rto_after([(40, False), (500, True)], False)
+    print("rto_after with Karn ON:", rto_karn_on, "OFF:", rto_karn_off)
+    assert rto_karn_on == 120.0
+    assert rto_karn_off == 617.5
+
+    print("\nAll scratch.py checks through Oct 20 PASS!")
+
