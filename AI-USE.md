@@ -7,6 +7,7 @@ Core: packet.py (top half), stopwait.py, gbn.py, sr.py, channel.py (damage),
 rto.py (the two classes).
 
 ## Atul
+- Used AI for building `test_all.py` test suite code to review and verify whether my code was working properly.
 
 ## Shashank
 
