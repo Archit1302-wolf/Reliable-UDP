@@ -204,5 +204,3 @@ if __name__ == "__main__":
     assert mg_sr_adapt == 2.77
 
     print("\nAll scratch.py checks through Oct 23 PASS!")
-
-
