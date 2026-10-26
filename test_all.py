@@ -15,6 +15,10 @@ import time
 import traceback
 import packet
 import stopwait
+import channel
+import rto
+from channel import Channel, damage
+from rto import FixedRTO, AdaptiveRTO
 
 
 # --- RTO and Channel test helpers ---
@@ -304,6 +308,80 @@ def test_sw_empty_file_transfer():
     assert res["sent"] == 1
     assert res["retx"] == 0
     assert res["sha256_ok"] is True
+
+
+# --- Archit: rto.py & channel.py ---
+def test_rto_fixed():
+    rto_inst = FixedRTO(0.2)
+    assert abs(rto_inst.value() - 0.2) < 1e-6
+    rto_inst.sample(0.05, False)
+    assert abs(rto_inst.value() - 0.2) < 1e-6
+    rto_inst.backoff()
+    assert abs(rto_inst.value() - 0.4) < 1e-6
+    rto_inst.forward()
+    assert abs(rto_inst.value() - 0.2) < 1e-6
+
+
+def test_rto_adaptive():
+    rto_inst = AdaptiveRTO(initial=0.2, min_rto=0.05, max_rto=10.0)
+    assert abs(rto_inst.value() - 0.2) < 1e-6
+
+    rto_inst.sample(0.1, False)
+    assert rto_inst.srtt == 0.1
+    assert rto_inst.rttvar == 0.05
+    assert abs(rto_inst.value() - 0.3) < 1e-6
+
+    rto_inst.sample(0.2, True)
+    assert rto_inst.srtt == 0.1
+
+    rto_inst.backoff()
+    assert abs(rto_inst.value() - 0.6) < 1e-6
+
+    rto_inst.forward()
+    assert abs(rto_inst.value() - 0.3) < 1e-6
+
+
+def test_rto_karn_toggle():
+    rto_inst = AdaptiveRTO(initial=0.2, karn=False)
+    rto_inst.sample(0.1, False)
+    assert rto_inst.srtt == 0.1
+    rto_inst.sample(0.2, True)
+    assert rto_inst.srtt != 0.1
+    assert len(rto_inst.trace) == 2
+
+
+def test_channel_damage():
+    ch = Channel(loss=1.0, seed=42)
+    assert ch.damage(b"hello") == []
+
+    ch_clean = Channel(loss=0.0, corrupt=0.0, dup=0.0, delay=0.0, seed=42)
+    assert ch_clean.damage(b"hello") == [b"hello"]
+
+    ch_dup = Channel(dup=1.0, seed=42)
+    assert ch_dup.damage(b"hello") == [b"hello", b"hello"]
+
+    ch_corrupt = Channel(corrupt=1.0, seed=42)
+    damaged = ch_corrupt.damage(b"hello")
+    assert len(damaged) == 1
+    assert damaged[0] != b"hello"
+    assert len(damaged[0]) == len(b"hello")
+
+
+def test_channel_determinism():
+    ch1 = Channel(loss=0.5, corrupt=0.2, seed=12345)
+    ch2 = Channel(loss=0.5, corrupt=0.2, seed=12345)
+    p1 = [ch1.damage(b"\x00\x00\x00\x01data") for _ in range(10)]
+    p2 = [ch2.damage(b"\x00\x00\x00\x01data") for _ in range(10)]
+    assert p1 == p2
+
+
+def test_channel_rate_limit():
+    ch = Channel(rate=10000, seed=42)
+    ch.tokens = 0
+    start = time.monotonic()
+    ch.damage(b"a" * 100)
+    elapsed = time.monotonic() - start
+    assert elapsed >= 0.005
 
 
 def main():
