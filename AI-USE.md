@@ -15,5 +15,6 @@ rto.py (the two classes).
 
 ## Archit
 - Used AI for building test_all.py unit tests for FixedRTO and channel damage logic.
+- Used AI to formulate RFC 6298 first-sample and variance-tracking unit tests for AdaptiveRTO (Oct 12 milestone).
 
 ## Harsha
