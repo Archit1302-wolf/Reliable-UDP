@@ -30,5 +30,6 @@ rto.py (the two classes).
 - Formulated draft of Report Section 2.4 (Channel impairment pipeline and RFC 6298 adaptive RTO) (Oct 24 milestone).
 - Formulated final Plot 4 and Plot 5 analytical paragraphs and marked Section 2.4 as finalized (Oct 26 milestone).
 - Formulated Practice Viva defense guide and experiment harness analysis (Oct 27 milestone).
+- Completed Checkpoint 3 final audit of Section 2.4, Plots 4/5 data integrity, and v1.0 readiness (Oct 28 milestone).
 
 ## Harsha
