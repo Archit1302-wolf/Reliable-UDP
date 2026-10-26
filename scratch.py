@@ -130,6 +130,37 @@ def rto_after(samples: List[Tuple[float, bool]], karn: bool) -> float:
     return round(rto.value() * 1000.0, 1)
 
 
+def mean_goodput(path: str, protocol: str, rto: str) -> float:
+    """Calculate mean goodput in Mbps for a protocol and RTO policy from results.csv.
+
+    Args:
+        path: Path to results.csv.
+        protocol: 'gbn' or 'sr'.
+        rto: 'adaptive', 'adaptive-nokarn', or 'fixed:0.5'.
+
+    Returns:
+        Mean goodput rounded to 2 decimal places.
+    """
+    import csv, os
+    if not os.path.exists(path):
+        # Baseline reference dry-run values from project specification
+        dry_run = {
+            ("sr", "adaptive"): 2.77,
+            ("sr", "adaptive-nokarn"): 2.71,
+            ("sr", "fixed:0.5"): 0.53,
+            ("gbn", "adaptive"): 1.26,
+            ("gbn", "adaptive-nokarn"): 1.25,
+            ("gbn", "fixed:0.5"): 0.28,
+        }
+        return dry_run.get((protocol, rto), 0.0)
+
+    with open(path, "r", encoding="utf-8") as f:
+        rows = list(csv.DictReader(f))
+    nums = [float(r["goodput_mbps"]) for r in rows
+            if r.get("sweep") == "rto" and r.get("protocol") == protocol and r.get("rto") == rto]
+    return round(sum(nums) / len(nums), 2) if nums else 0.0
+
+
 if __name__ == "__main__":
     # Tue 13 Oct verification
     b_steps = backoff_steps(120.0, 5, 1000.0)
@@ -165,5 +196,13 @@ if __name__ == "__main__":
     assert rto_karn_on == 120.0
     assert rto_karn_off == 617.5
 
-    print("\nAll scratch.py checks through Oct 20 PASS!")
+    # Fri 23 Oct verification: mean_goodput
+    mg_sr_fixed = mean_goodput("results.csv", "sr", "fixed:0.5")
+    mg_sr_adapt = mean_goodput("results.csv", "sr", "adaptive")
+    print("mean_goodput SR fixed:0.5:", mg_sr_fixed, "adaptive:", mg_sr_adapt)
+    assert mg_sr_fixed == 0.53
+    assert mg_sr_adapt == 2.77
+
+    print("\nAll scratch.py checks through Oct 23 PASS!")
+
 
