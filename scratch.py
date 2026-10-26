@@ -166,4 +166,3 @@ if __name__ == "__main__":
     assert rto_karn_off == 617.5
 
     print("\nAll scratch.py checks through Oct 20 PASS!")
-
