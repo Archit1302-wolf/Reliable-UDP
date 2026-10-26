@@ -27,5 +27,6 @@ rto.py (the two classes).
 - Used AI to verify Checkpoint 2 test suite and align channel.damage signature (Oct 21 milestone).
 - Recorded official Code Freeze validation: 36 passed on Python 3.14 win32 environment (Oct 22 milestone).
 - Formulated mean_goodput statistical extractor and documented Plot 4/Plot 5 analysis (Oct 23 milestone).
+- Formulated draft of Report Section 2.4 (Channel impairment pipeline and RFC 6298 adaptive RTO) (Oct 24 milestone).
 
 ## Harsha
