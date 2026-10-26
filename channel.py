@@ -52,7 +52,8 @@ class Channel:
         val = int.from_bytes(h, "big") / (2**64)
         return val < p
 
-    def damage(self, data):
+    def damage(self, raw: bytes, direction: str = "to_receiver"):
+        data = raw
         if not data:
             return []
 

@@ -24,5 +24,6 @@ rto.py (the two classes).
 - Used AI to formulate boundary invariance tests and variable-payload corruption checks (Oct 19 milestone).
 - Used AI to assist in reviewing Shashank's GBN PR #4 (rto interface verification) and formulating scratch.py practice helper functions (Oct 19 milestone).
 - Used AI to formulate Karn's algorithm hand-trace simulation and rto_after verification logic (Oct 20 milestone).
+- Used AI to verify Checkpoint 2 test suite and align channel.damage signature (Oct 21 milestone).
 
 ## Harsha
