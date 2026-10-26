@@ -22,5 +22,6 @@ rto.py (the two classes).
 - Used AI to build end-to-end channel integration tests with composite impairments and reordering recovery (Oct 16 milestone).
 - Used AI to build determinism drill verification tests and userspace netem emulation documentation (Oct 17 milestone).
 - Used AI to formulate boundary invariance tests and variable-payload corruption checks (Oct 19 milestone).
+- Used AI to assist in reviewing Shashank's GBN PR #4 (rto interface verification) and formulating scratch.py practice helper functions (Oct 19 milestone).
 
 ## Harsha
