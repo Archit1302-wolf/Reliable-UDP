@@ -19,5 +19,6 @@ rto.py (the two classes).
 - Used AI to validate Karn's algorithm RTT ambiguity edge cases and trace schema tests (Oct 13 milestone).
 - Used AI to design determinism verification tests and hash-seeded attempt tracking tests (Oct 14 milestone).
 - Used AI to formulate token bucket burst capacity and throttling edge tests (Oct 15 milestone).
+- Used AI to build end-to-end channel integration tests with composite impairments and reordering recovery (Oct 16 milestone).
 
 ## Harsha
